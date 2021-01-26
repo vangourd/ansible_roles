@@ -1,0 +1,4 @@
+---
+# defaults file for httpd_vhost
+log_path: /var/log/httpd/
+server_admin_email: user@example.com

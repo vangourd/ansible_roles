@@ -1,0 +1,50 @@
+---
+# tasks file for httpd_vhost
+- name: install apache
+  yum:
+    name: httpd
+    state: installed
+- name: deploy vhost
+  template:
+    src: templates/httpd-vhosts.conf.j2
+    dest: /etc/httpd/conf.d/{{ item }}.conf
+  loop: "{{ vhosts }}"
+  notify: httpd_configured
+- name: create html directories
+  file:
+    path: /var/www/{{ item }}
+    state: directory
+  loop: "{{ vhosts }}"
+- name: deploy sample html file
+  template:
+    src: templates/vhost.j2
+    dest: /var/www/{{ item }}/index.html
+  loop: "{{ vhosts }}"
+  notify: httpd_configured
+- name: verify vhost installed
+  shell: |
+    httpd -S
+  changed_when: false
+  register: verify
+- debug:
+    var: verify.stdout
+- name:
+  assert:
+    that: |
+      "port 80 namevhost {{ item }}" in verify.stdout
+    that: |
+      "(/etc/httpd/conf.d/{{ item }}" in verify.stdout
+    that: |
+      "alias {{ item }}" in verify.stdout
+  loop: "{{ vhosts }}"
+- name:
+  firewalld:
+    service: http
+    state: enabled
+    permanent: yes
+    immediate: yes
+- name: service setup
+  service:
+    name: httpd
+    state: started
+    enabled: yes
